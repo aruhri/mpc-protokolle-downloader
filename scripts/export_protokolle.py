@@ -141,6 +141,17 @@ def maybe_login_required(page: Page) -> bool:
     return page.locator("input[type='password']").count() > 0
 
 
+def raise_if_blocked(page: Page) -> None:
+    """Detect Cloudflare/bot-protection block pages, which otherwise silently
+    look like a page with no filter form and no results."""
+    title = (page.title() or "").lower()
+    if "attention required" in title or "cloudflare" in title or page.locator(".cf-error-details-wrapper").count() > 0:
+        raise RuntimeError(
+            "Zugriff von Cloudflare blockiert (Bot-Schutz). Bitte mit --headful von einem "
+            "normalen Rechner/Netzwerk aus neu einloggen (--force-login)."
+        )
+
+
 BASE_LIST_URL = "https://medi-pro-club.de/club/wegweiser/facharztprotokolle"
 
 
@@ -168,6 +179,7 @@ def apply_filters_from_url(page: Page, list_url: str, timeout_ms: int) -> str:
     query = parse_qs(urlparse(list_url).query, keep_blank_values=True)
 
     page.goto(list_url, wait_until="domcontentloaded")
+    raise_if_blocked(page)
     if maybe_login_required(page):
         raise RuntimeError("Session abgelaufen vor Anwenden der Filter. Bitte mit --force-login neu starten.")
 
@@ -203,6 +215,7 @@ def apply_filters_from_url(page: Page, list_url: str, timeout_ms: int) -> str:
 
     page.locator("#formular button[name='aktion'][value='search']").first.click()
     page.wait_for_load_state("domcontentloaded", timeout=timeout_ms)
+    raise_if_blocked(page)
     if maybe_login_required(page):
         raise RuntimeError("Session abgelaufen nach Anwenden der Filter. Bitte mit --force-login neu starten.")
 
@@ -224,6 +237,7 @@ def ensure_session(context: BrowserContext, args: argparse.Namespace, list_url_p
     page = context.new_page()
     page.set_default_timeout(args.timeout_ms)
     page.goto(start_url, wait_until="domcontentloaded")
+    raise_if_blocked(page)
 
     if args.force_login or maybe_login_required(page):
         log("[auth] Interaktive Anmeldung erforderlich.")
@@ -324,6 +338,7 @@ def collect_all_protocol_links(
     for page_nr in range(1, args.max_pages + 1):
         current_url = increment_page_url(list_url, page_nr)
         page.goto(current_url, wait_until="domcontentloaded")
+        raise_if_blocked(page)
         if maybe_login_required(page):
             raise RuntimeError("Session abgelaufen waehrend Listen-Crawl. Bitte mit --force-login neu starten.")
 
