@@ -156,12 +156,58 @@ def save_list_url(path: Path, url: str) -> None:
     path.write_text(url.strip() + "\n", encoding="utf-8")
 
 
+def apply_filters_from_url(page: Page, list_url: str, timeout_ms: int) -> str:
+    """Fill and submit the real filter form with the values from list_url.
+
+    GET query params alone are not reliably honoured by the server (pagination
+    links only ever carry seitenNr/fachrichtung/ort), so passing --list-url with
+    query params and just navigating to it can silently show an empty list."""
+    parsed = urlparse(list_url)
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    base_url = urlunparse(parsed._replace(query="", fragment=""))
+
+    page.goto(base_url, wait_until="domcontentloaded")
+    if maybe_login_required(page):
+        raise RuntimeError("Session abgelaufen vor Anwenden der Filter. Bitte mit --force-login neu starten.")
+
+    if page.locator("#formular").count() == 0:
+        log("[filter] Filterformular nicht gefunden, verwende die URL direkt.")
+        page.goto(list_url, wait_until="domcontentloaded")
+        return page.url
+
+    fachrichtung = (query.get("fachrichtung") or [""])[0]
+    if fachrichtung:
+        page.locator("#fachrichtung").select_option(value=fachrichtung)
+
+    ort = (query.get("ort") or [""])[0]
+    page.locator("#ort").fill(ort)
+
+    pruefer = (query.get("pruefer") or [""])[0]
+    page.locator("#pruefer").fill(pruefer)
+
+    search_term = (query.get("search_term") or [""])[0]
+    page.locator("#search_term").fill(search_term)
+
+    page.locator("#formular button[name='aktion'][value='search']").first.click()
+    page.wait_for_load_state("domcontentloaded", timeout=timeout_ms)
+    if maybe_login_required(page):
+        raise RuntimeError("Session abgelaufen nach Anwenden der Filter. Bitte mit --force-login neu starten.")
+
+    log(
+        f"[filter] Filter angewendet: fachrichtung={fachrichtung!r} ort={ort!r} "
+        f"pruefer={pruefer!r} search_term={search_term!r}"
+    )
+    return page.url
+
+
 def ensure_session(context: BrowserContext, args: argparse.Namespace, list_url_path: Path) -> str:
     """Login (if needed) and determine the real, filtered list URL.
 
-    On the first run (or with --force-login) the user logs in and sets the
-    desired filter directly in the browser; the resulting URL is captured and
-    stored in list_url_path so later runs can reuse it without --list-url."""
+    If --list-url is given, its filter values are applied through the real
+    filter form (see apply_filters_from_url). Otherwise, on the first run (or
+    with --force-login) the user sets the desired filter directly in the
+    browser; the resulting URL is captured and stored in list_url_path so
+    later runs can reuse it without --list-url."""
     stored_url = load_stored_list_url(list_url_path)
     start_url = args.list_url or stored_url or BASE_LIST_URL
 
@@ -169,19 +215,25 @@ def ensure_session(context: BrowserContext, args: argparse.Namespace, list_url_p
     page.set_default_timeout(args.timeout_ms)
     page.goto(start_url, wait_until="domcontentloaded")
 
-    needs_interactive_setup = (
-        args.force_login or maybe_login_required(page) or (args.list_url is None and stored_url is None)
-    )
+    if args.force_login or maybe_login_required(page):
+        log("[auth] Interaktive Anmeldung erforderlich.")
+        log("[auth] Bitte im Browser einloggen, dann im Terminal Enter druecken.")
+        input("Weiter mit Enter, sobald du eingeloggt bist... ")
 
-    if needs_interactive_setup:
-        log("[auth] Interaktive Anmeldung/Filter-Einrichtung erforderlich.")
-        log("[auth] Bitte im Browser einloggen und die gewuenschte Protokoll-Liste filtern.")
-        input("Weiter mit Enter, sobald die gefilterte Liste sichtbar ist... ")
-
+        page.goto(start_url, wait_until="domcontentloaded")
         if maybe_login_required(page):
             raise RuntimeError("Login nicht erfolgreich. Bitte erneut ausfuehren.")
 
-    resolved_list_url = page.url
+    if args.list_url:
+        resolved_list_url = apply_filters_from_url(page, args.list_url, args.timeout_ms)
+    elif stored_url is None:
+        log("[filter] Keine gespeicherte Filter-URL gefunden.")
+        log("[filter] Bitte jetzt im Browser die gewuenschte Protokoll-Liste filtern.")
+        input("Weiter mit Enter, sobald die gefilterte Liste sichtbar ist... ")
+        resolved_list_url = page.url
+    else:
+        resolved_list_url = stored_url
+
     session_path = Path(args.session_file)
     session_path.parent.mkdir(parents=True, exist_ok=True)
     context.storage_state(path=str(session_path))

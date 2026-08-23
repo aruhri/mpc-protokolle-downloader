@@ -29,7 +29,7 @@ Ablauf beim Erstlauf:
 3. Im Terminal Enter drücken, sobald die gefilterte Liste sichtbar ist.
 4. Das Skript speichert die tatsächlich genutzte, gefilterte URL in `session/list_url.txt` und sammelt anschließend Links und extrahiert Inhalte.
 
-Optional kannst du mit `--list-url "..."` eine URL als Startpunkt vorgeben (z. B. um beim ersten Aufruf schneller zur richtigen Fachrichtung zu gelangen); die Filterung selbst nimmst du aber im Browser vor.
+Optional kannst du mit `--list-url "..."` eine URL mit Filterparametern (`fachrichtung`, `ort`, `pruefer`, `search_term`) vorgeben. Diese Werte werden dann automatisch über das echte Filterformular gesetzt und abgeschickt (ein einfacher GET-Aufruf reicht nicht, da der Server Prüfer/Suchbegriff sonst ignoriert und eine leere Liste liefert).
 
 ## Folgelauf (ohne erneuten Login, ohne --list-url)
 
@@ -80,7 +80,7 @@ Es wird nur der Protokollinhalt aus dem Quill-Editor übernommen.
 
 | Option | Standard | Beschreibung |
 | --- | --- | --- |
-| `--list-url` | – | Optionaler Startpunkt für den ersten Lauf bzw. `--force-login`. Die im Browser tatsächlich eingestellte, gefilterte URL wird danach automatisch in `--list-url-file` gespeichert und wiederverwendet. |
+| `--list-url` | – | URL mit Filterparametern (`fachrichtung`, `ort`, `pruefer`, `search_term`). Wird angegeben, werden diese Werte automatisch über das echte Filterformular gesetzt und abgeschickt. Ohne `--list-url` wird die zuletzt gespeicherte bzw. interaktiv im Browser eingestellte Filter-URL verwendet. |
 | `--output` | `protokolle_gesamt.md` | Ausgabe-Markdown-Datei; neue Protokolle werden angehängt. |
 | `--session-file` | `session/storage_state.json` | Pfad zur gespeicherten Playwright-Session. |
 | `--ids-file` | `protokolle_ids.txt` | Datei mit IDs bereits geladener Protokolle (wird gelesen und aktualisiert). |
