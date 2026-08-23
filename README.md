@@ -16,7 +16,7 @@ Dieses Projekt enthält ein Python-Skript, das nach Login alle Protokollseiten c
 
 ```bash
 /home/ruhri/Projekte/johanna_FA_protokolle/.venv/bin/python scripts/export_protokolle.py \
-  --list-url "https://medi-pro-club.de/club/wegweiser/facharztprotokolle?seitenNr=1&fachrichtung=21&ort=M%C3%BCnster&ortId=&pruefer=&search_term=" \
+  --list-url "https://medi-pro-club.de/club/wegweiser/facharztprotokolle" \
   --output protokolle_gesamt.md \
   --max-pages 12 \
   --headful \
@@ -34,7 +34,7 @@ Ablauf beim Erstlauf:
 
 ```bash
 /home/ruhri/Projekte/johanna_FA_protokolle/.venv/bin/python scripts/export_protokolle.py \
-  --list-url "https://medi-pro-club.de/club/wegweiser/facharztprotokolle?seitenNr=1&fachrichtung=21&ort=M%C3%BCnster&ortId=&pruefer=&search_term=" \
+  --list-url "https://medi-pro-club.de/club/wegweiser/facharztprotokolle" \
   --output protokolle_gesamt.md \
   --max-pages 12
 ```
@@ -47,7 +47,7 @@ Beim Crawlen wird eine IDs-Datei (`protokolle_ids.txt`) mit allen bereits gelade
 
 ```bash
 /home/ruhri/Projekte/johanna_FA_protokolle/.venv/bin/python scripts/export_protokolle.py \
-  --list-url "https://medi-pro-club.de/club/wegweiser/facharztprotokolle?seitenNr=1&fachrichtung=21&ort=M%C3%BCnster&ortId=&pruefer=&search_term=" \
+  --list-url "https://medi-pro-club.de/club/wegweiser/facharztprotokolle" \
   --output protokolle_gesamt.md \
   --max-pages 12
 ```
@@ -61,8 +61,8 @@ Die Ausgabe enthält für jedes Protokoll Datum und Prüfer aus der Listenansich
 ```markdown
 ## Protokoll 1
 
-**Datum:** 06.07.2026
-**Prüfer:** Dr. Klock (Vorsitz), Dr. Nagel
+**Datum:** 06.07.1825
+**Prüfer:** Dr. med. Wurst (Vorsitz), Dr. Hammer
 
 ...extrahierter Markdown-Text...
 ```
