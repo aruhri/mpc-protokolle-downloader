@@ -161,7 +161,10 @@ def apply_filters_from_url(page: Page, list_url: str, timeout_ms: int) -> str:
 
     GET query params alone are not reliably honoured by the server (pagination
     links only ever carry seitenNr/fachrichtung/ort), so passing --list-url with
-    query params and just navigating to it can silently show an empty list."""
+    query params and just navigating to it can silently show an empty list.
+
+    Only query params actually present in list_url are set; missing params are
+    left untouched instead of being force-cleared."""
     query = parse_qs(urlparse(list_url).query, keep_blank_values=True)
 
     page.goto(list_url, wait_until="domcontentloaded")
@@ -172,28 +175,38 @@ def apply_filters_from_url(page: Page, list_url: str, timeout_ms: int) -> str:
         log("[filter] Filterformular nicht gefunden, verwende die URL direkt.")
         return page.url
 
-    fachrichtung = (query.get("fachrichtung") or [""])[0]
-    if fachrichtung:
+    applied: dict[str, str] = {}
+
+    if "fachrichtung" in query:
+        fachrichtung = query["fachrichtung"][0]
         page.locator("#fachrichtung").select_option(value=fachrichtung)
+        applied["fachrichtung"] = fachrichtung
 
-    ort = (query.get("ort") or [""])[0]
-    page.locator("#ort").fill(ort)
+    if "ort" in query:
+        ort = query["ort"][0]
+        page.locator("#ort").fill(ort)
+        applied["ort"] = ort
 
-    pruefer = (query.get("pruefer") or [""])[0]
-    page.locator("#pruefer").fill(pruefer)
+    if "pruefer" in query:
+        pruefer = query["pruefer"][0]
+        page.locator("#pruefer").fill(pruefer)
+        applied["pruefer"] = pruefer
 
-    search_term = (query.get("search_term") or [""])[0]
-    page.locator("#search_term").fill(search_term)
+    if "search_term" in query:
+        search_term = query["search_term"][0]
+        page.locator("#search_term").fill(search_term)
+        applied["search_term"] = search_term
+
+    # search_term has a "required" HTML attribute, which would block the click
+    # via native browser validation when left empty; drop it before submitting.
+    page.evaluate("document.getElementById('search_term')?.removeAttribute('required')")
 
     page.locator("#formular button[name='aktion'][value='search']").first.click()
     page.wait_for_load_state("domcontentloaded", timeout=timeout_ms)
     if maybe_login_required(page):
         raise RuntimeError("Session abgelaufen nach Anwenden der Filter. Bitte mit --force-login neu starten.")
 
-    log(
-        f"[filter] Filter angewendet: fachrichtung={fachrichtung!r} ort={ort!r} "
-        f"pruefer={pruefer!r} search_term={search_term!r}"
-    )
+    log(f"[filter] Filter angewendet: {applied or 'keine Aenderung, nur erneut abgeschickt'}")
     return page.url
 
 
