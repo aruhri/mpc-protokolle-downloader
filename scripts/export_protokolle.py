@@ -162,17 +162,14 @@ def apply_filters_from_url(page: Page, list_url: str, timeout_ms: int) -> str:
     GET query params alone are not reliably honoured by the server (pagination
     links only ever carry seitenNr/fachrichtung/ort), so passing --list-url with
     query params and just navigating to it can silently show an empty list."""
-    parsed = urlparse(list_url)
-    query = parse_qs(parsed.query, keep_blank_values=True)
-    base_url = urlunparse(parsed._replace(query="", fragment=""))
+    query = parse_qs(urlparse(list_url).query, keep_blank_values=True)
 
-    page.goto(base_url, wait_until="domcontentloaded")
+    page.goto(list_url, wait_until="domcontentloaded")
     if maybe_login_required(page):
         raise RuntimeError("Session abgelaufen vor Anwenden der Filter. Bitte mit --force-login neu starten.")
 
     if page.locator("#formular").count() == 0:
         log("[filter] Filterformular nicht gefunden, verwende die URL direkt.")
-        page.goto(list_url, wait_until="domcontentloaded")
         return page.url
 
     fachrichtung = (query.get("fachrichtung") or [""])[0]
