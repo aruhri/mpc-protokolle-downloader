@@ -132,6 +132,27 @@ def maybe_login_required(page: Page) -> bool:
     return page.locator("input[type='password']").count() > 0
 
 
+def apply_list_filters(page: Page, args: argparse.Namespace) -> None:
+    """Submit the filter form once so the server-side session actually applies the
+    filters from --list-url; GET query params alone are not always enough (the
+    pagination links only carry seitenNr/fachrichtung/ort, so pruefer/search_term
+    can otherwise get lost, leading to an empty list on later page loads)."""
+    page.goto(args.list_url, wait_until="domcontentloaded")
+    if maybe_login_required(page):
+        raise RuntimeError("Session abgelaufen vor Anwenden der Filter. Bitte mit --force-login neu starten.")
+
+    submit_button = page.locator("#formular button[name='aktion'][value='search']")
+    if submit_button.count() == 0:
+        log("[filter] Filterformular nicht gefunden, ueberspringe erneutes Anwenden.")
+        return
+
+    submit_button.first.click()
+    page.wait_for_load_state("domcontentloaded")
+    if maybe_login_required(page):
+        raise RuntimeError("Session abgelaufen nach Anwenden der Filter. Bitte mit --force-login neu starten.")
+    log("[filter] Filter erneut angewendet, um die Session zu aktualisieren.")
+
+
 def ensure_session(context: BrowserContext, args: argparse.Namespace) -> None:
     page = context.new_page()
     page.set_default_timeout(args.timeout_ms)
@@ -415,6 +436,8 @@ def main() -> int:
 
             page = context.new_page()
             page.set_default_timeout(args.timeout_ms)
+
+            apply_list_filters(page, args)
 
             protocol_links = collect_all_protocol_links(page, args, downloaded_ids, min_date)
 
