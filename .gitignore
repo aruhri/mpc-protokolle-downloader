@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Playwright session (contains login/auth state)
+session/
+
+# Generated output (private protocol content)
+protokolle_gesamt.md
+protokolle_gesamt_*.md
+protokolle_ids.txt
+
+# Scraped sample pages (contain real, private protocol data)
+Liste_der_protokolle.html
+Liste_der_protokolle-Dateien/
+Protokoll_Beispiel.html
+Protokoll_Beispiel-Dateien/
